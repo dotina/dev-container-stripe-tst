@@ -58,6 +58,11 @@ app.get('/complete', async (req, res) => {
     res.send('Your payment was successful')
 })
 
+app.get('/customers', async (req, res) => {
+    const customers = await stripe.customers.list();
+    res.send(customers)
+})
+
 app.get('/cancel', (req, res) => {
     res.redirect('/')
 })
