@@ -12,7 +12,7 @@ app.get('/', (req, res) => {
     res.render('index.ejs')
 })
 
-app.post('/pay', async (req, res) => {
+app.post('/checkout', async (req, res) => {
     const session = await stripe.checkout.sessions.create({
         line_items: [
             {
@@ -44,7 +44,7 @@ app.post('/pay', async (req, res) => {
         cancel_url: `${process.env.BASE_URL}/cancel`
     })
 
-    res.redirect(session.url)
+    res.redirect(session.url) // this redirects to the stripe url
 })
 
 app.get('/complete', async (req, res) => {
@@ -62,6 +62,11 @@ app.get('/customers', async (req, res) => {
     const customers = await stripe.customers.list();
     res.send(customers)
 })
+
+app.get('/financeAccount', async (req, res) => {
+    const fBalance = await stripe.v2.financialAccounts.list();
+    res.send(fBalance)
+}) 
 
 app.get('/cancel', (req, res) => {
     res.redirect('/')
