@@ -42,75 +42,100 @@ app.get('/recipients', async (req, res) => {
     }
 });
 
-// app.post('/recipients', async (req, res) => {
-//     // Validate that req.body is defined
-//     if (!req.body) {
-//         return res.status(400).send({ error: 'Request body is missing' });
-//     }
+app.get('/financeAccounts', async (req, res) => {
+    const { id, balances } = req.query;
+
+    try {
+          // Construct the URL based on the presence of id and balances
+          let url = 'financial_accounts';
+          if (id) {
+              url = `financial_accounts/${id}`;
+              if (balances) {
+                  url += '/balances';
+              }
+          }
+
+        const response = await axiosInstance.get(url);
+
+        res.send(response.data);
+    } catch (error) {
+        console.error('Stripe API error:', error);
+        res.status(500).send({
+            error: error.response ? error.response.data : error.message
+        });
+    }
+});
+
+app.get('/financeAccountsAddress', async (req, res) => {
+    const { id } = req.query;
+
+    try {
+        const url = id ? `financial_addresses/${id}` : 'financial_addresses';
+        const response = await axiosInstance.get(url);
+
+        res.send(response.data);
+    } catch (error) {
+        console.error('Stripe API error:', error);
+        res.status(500).send({
+            error: error.response ? error.response.data : error.message
+        });
+    }
+});
+
+app.post('/recipients', async (req, res) => {
+    // Validate that req.body is defined
+    if (!req.body) {
+        return res.status(400).send({ error: 'Request body is missing' });
+    }
     
-//     const { name, email, legal_entity_data, configuration } = req.body;
+    const { name, email, legal_entity_data, configuration } = req.body;
 
-//     // Validate required fields
-//     if (!name || !email || !legal_entity_data || !configuration) {
-//         return res.status(400).send({ error: 'Missing required fields: name, email, legal_entity_data, or configuration' });
-//     }
+    // Validate required fields
+    if (!name || !email || !legal_entity_data || !configuration) {
+        return res.status(400).send({ error: 'Missing required fields: name, email, legal_entity_data, or configuration' });
+    }
 
-//     try {
-//         const account = await stripe.v2.accounts.create({
-//             type: 'custom',
-//             email,
-//             business_type: legal_entity_data.business_type,
-//             company: {
-//                 name: legal_entity_data.name,
-//                 address: {
-//                     country: legal_entity_data.country
-//                 }
-//             },
-//             metadata: {
-//                 name
-//             },
-//             settings: {
-//                 payouts: {
-//                     schedule: {
-//                         interval: 'manual'
-//                     }
-//                 }
-//             },
-//             capabilities: {
-//                 transfers: { requested: true }
-//             },
-//             tos_acceptance: {
-//                 date: Math.floor(Date.now() / 1000),
-//                 ip: req.ip
-//             },
-//             external_account: {
-//                 object: 'bank_account',
-//                 country: legal_entity_data.country,
-//                 currency: 'usd', // Adjust according to your needs
-//                 account_number: '000123456789',
-//                 routing_number: '110000000'
-//             }
-//         });
-//         res.status(201).send(account);
-//     } catch (error) {
-//         console.error('Stripe API error:', error);
-//         res.status(500).send({
-//             error: error.message,
-//             stripeError: error.raw ? error.raw : null
-//         });
-//     }
-// });
+    try {
+        const accountData = {
+            include: [
+                "legal_entity_data",
+                "configuration.recipient_data"
+            ],
+            name: name,
+            email: email,
+            legal_entity_data: {
+                business_type: legal_entity_data.business_type,
+                country: legal_entity_data.country,
+                name: legal_entity_data.name
+            },
+            configuration: {
+                recipient_data: {
+                    features: {
+                        bank_accounts: {
+                            local: {
+                                requested: configuration.recipient_data.features.bank_accounts.local.requested
+                            },
+                            wire:  {
+                                requested: configuration.recipient_data.features.bank_accounts.wire.requested
+                            }
+                        }
+                    }
+                }
+            }
+        };
 
-// app.get('/financeAccount', async (req, res) => {
-//     try {
-//         // List of financial accounts
-//         const fBalance = await stripe.financialAccounts.list();
-//         res.json(fBalance);
-//       } catch (error) {
-//         console.error('Error fetching financial accounts:', error);
-//         res.status(500).send('Internal Server Error');
-//       }
-// }) 
+        // Make the POST request to create the account
+        const response = await axiosInstance.post('accounts', accountData);
+
+        res.status(201).send(response.data);
+    } catch (error) {
+        console.error('Stripe API error:', error);
+        res.status(500).send({
+            error: error.response ? error.response.data : error.message,
+            stripeError: error.response ? error.response.data.raw : null
+        });
+    }
+});
 
 // app.get('/cancel', (req, res) => {
 //     res.redirect('/')
